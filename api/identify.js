@@ -1,41 +1,40 @@
-// This is the back-end code for the serverless function.
+// This is the REAL back-end code for the serverless function.
 // File Location: /api/identify.js
 
-// This function simulates a successful response from the Google Vision AI.
-// In a real project, this is where the call to Google's service would happen.
-function getMockAIResponse(imageData) {
-    console.log("Simulating AI analysis...");
-    // We return a hardcoded list of labels, just like the real AI would.
-    return {
-        labels: [
-            { description: 'Apple', score: 0.98 },
-            { description: 'Fruit', score: 0.95 },
-            { description: 'Gala Apple', score: 0.92 }
-        ]
-    };
-}
+const vision = require('@google-cloud/vision');
 
-// This is the main function that runs when your front-end calls `/api/identify`.
-export default async function handler(request, response) {
-    // We only want to allow POST requests.
-    if (request.method !== 'POST') {
-        return response.status(405).json({ message: 'Only POST requests are allowed' });
+// This is the main function that runs when your front-end calls '/api/identify'.
+export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ message: 'Only POST requests are allowed' });
     }
 
     try {
-        const { image } = request.body;
-        if (!image) {
-            return response.status(400).json({ message: 'No image data provided.' });
-        }
+        // Create a new client to talk to Google's AI.
+        // It will automatically find the API key you stored in Vercel.
+        const client = new vision.ImageAnnotatorClient();
 
-        // We call our mock function to get the fake results.
-        const aiResults = getMockAIResponse(image);
+        // Get the image data sent from the front-end.
+        // We need to strip the header from the image data string.
+        const imageData = req.body.image.replace(/^data:image\/jpeg;base64,/, "");
 
-        // We send the successful results back to the front-end.
-        response.status(200).json(aiResults);
+        // Prepare the request to send to Google.
+        const request = {
+            image: {
+                content: imageData,
+            },
+            features: [{ type: 'LABEL_DETECTION', maxResults: 5 }],
+        };
+
+        // Send the request and get the results.
+        const [result] = await client.labelDetection(request);
+        const labels = result.labelAnnotations; // This is the array of results.
+        
+        // Send the real labels from the AI back to the front-end.
+        res.status(200).json({ labels: labels });
 
     } catch (error) {
-        console.error('Error in back-end function:', error);
-        response.status(500).json({ message: 'Internal Server Error' });
+        console.error('GOOGLE VISION AI ERROR:', error);
+        res.status(500).json({ message: 'Error analyzing image with Vision AI.' });
     }
 }

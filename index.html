@@ -29,6 +29,8 @@
     </main>
 
     <script>
+        console.log("Script is running!"); // This should appear first.
+
         // Get references to all the HTML elements
         const cameraView = document.getElementById('camera-view');
         const resultsView = document.getElementById('results-view');
@@ -37,16 +39,19 @@
         const resultsButtons = document.getElementById('results-buttons');
         const scanAgainButton = document.getElementById('scan-again-button');
         
-        let videoElement; // This will hold our video stream
-        const pickList = []; // This array will store your selected items
+        let videoElement;
+        const pickList = [];
 
-        // This function starts the camera (it's the same as before)
         async function startCamera() {
+            console.log("1. 'startCamera' function called.");
             try {
+                console.log("2. Requesting camera permission from browser...");
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: 'environment' } 
                 });
-                
+                console.log("3. Permission granted and stream received.");
+
+                console.log("4. Creating video element...");
                 videoElement = document.createElement('video');
                 videoElement.srcObject = stream;
                 videoElement.setAttribute('playsinline', true);
@@ -54,31 +59,27 @@
                 videoElement.classList.add('w-full', 'h-full', 'object-cover'); 
 
                 cameraFeed.innerHTML = '';
+                console.log("5. Appending video element to page.");
                 cameraFeed.appendChild(videoElement);
+                console.log("6. Camera should now be visible!");
 
             } catch (err) {
-                console.error("Error accessing the camera: ", err);
-                cameraFeed.innerHTML = '<p class="text-red-500 p-4">Could not access camera. Please grant permission and refresh.</p>';
+                console.error("ERROR FOUND in startCamera:", err);
             }
         }
 
-        // --- NEW FUNCTION TO SHOW THE RESULTS SCREEN ---
         function showResults(labels) {
-            resultsButtons.innerHTML = ''; // Clear out any old results
-            
-            // Loop through each label from the AI and create a button for it
+            resultsButtons.innerHTML = ''; 
             labels.forEach(label => {
                 const button = document.createElement('button');
                 button.textContent = label.description;
                 button.classList.add('w-full', 'bg-green-500', 'hover:bg-green-700', 'text-white', 'font-bold', 'py-2', 'px-4', 'rounded');
                 
-                // When a result button is clicked...
                 button.onclick = () => {
-                    pickList.push(label.description); // Add the item to our list
+                    pickList.push(label.description);
                     console.log('Current Pick List:', pickList);
                     alert(`Added "${label.description}" to your list!`);
                     
-                    // Visually disable the button so you can't add it twice
                     button.disabled = true;
                     button.classList.remove('bg-green-500', 'hover:bg-green-700');
                     button.classList.add('bg-gray-400', 'cursor-not-allowed');
@@ -86,18 +87,15 @@
                 resultsButtons.appendChild(button);
             });
             
-            // Hide the camera view and show the results view
             cameraView.classList.add('hidden');
             resultsView.classList.remove('hidden');
         }
 
-        // When the "Scan Again" button is clicked, switch back to the camera view
         scanAgainButton.addEventListener('click', () => {
             resultsView.classList.add('hidden');
             cameraView.classList.remove('hidden');
         });
         
-        // --- UPDATED EVENT LISTENER FOR THE MAIN BUTTON ---
         identifyButton.addEventListener('click', async () => {
             if (!videoElement) {
                 return;
@@ -114,4 +112,35 @@
             identifyButton.disabled = true;
 
             try {
-                const response
+                const response = await fetch('/api/identify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
+
+                const results = await response.json();
+                
+                if (results.labels && results.labels.length > <strong>0</strong>) {
+                    showResults(results.labels);
+                } else {
+                    alert('Nothing was detected.');
+                }
+                
+            } catch (error) {
+                console.error('Error identifying image:', error);
+                alert('Could not identify the image. Please try again.');
+            } finally {
+                identifyButton.textContent = 'Identify Items';
+                identifyButton.disabled = false;
+            }
+        });
+
+        startCamera();
+    </script>
+
+</body>
+</html>

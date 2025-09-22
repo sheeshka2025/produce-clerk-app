@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickList - Camera View</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <main class="w-full max-w-lg p-4 bg-white rounded-lg shadow-md">
+        <div id="camera-view">
+            <div id="camera-feed" class="w-full h-80 bg-gray-900 text-white flex items-center justify-center rounded-md border-2 border-gray-300 mb-4">
+                <p>Camera feed will appear here</p>
+            </div>
+            <button id="identify-button" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">
+                Identify Items
+            </button>
+        </div>
+
+        <div id="results-view" class="hidden">
+            <h2 class="text-xl font-bold mb-2 text-center">Select Items to Add:</h2>
+            <div id="results-buttons" class="flex flex-col gap-2 mb-4">
+                </div>
+            <button id="scan-again-button" class="w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg">
+                Scan Again
+            </button>
+        </div>
+    </main>
+
+    <script>
+        // Get references to all the HTML elements
+        const cameraView = document.getElementById('camera-view');
+        const resultsView = document.getElementById('results-view');
+        const cameraFeed = document.getElementById('camera-feed');
+        const identifyButton = document.getElementById('identify-button');
+        const resultsButtons = document.getElementById('results-buttons');
+        const scanAgainButton = document.getElementById('scan-again-button');
+        
+        let videoElement; // This will hold our video stream
+        const pickList = []; // This array will store your selected items
+
+        // This function starts the camera (it's the same as before)
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                
+                videoElement = document.createElement('video');
+                videoElement.srcObject = stream;
+                videoElement.setAttribute('playsinline', true);
+                videoElement.autoplay = true;
+                videoElement.classList.add('w-full', 'h-full', 'object-cover'); 
+
+                cameraFeed.innerHTML = '';
+                cameraFeed.appendChild(videoElement);
+
+            } catch (err) {
+                console.error("Error accessing the camera: ", err);
+                cameraFeed.innerHTML = '<p class="text-red-500 p-4">Could not access camera. Please grant permission and refresh.</p>';
+            }
+        }
+
+        // --- NEW FUNCTION TO SHOW THE RESULTS SCREEN ---
+        function showResults(labels) {
+            resultsButtons.innerHTML = ''; // Clear out any old results
+            
+            // Loop through each label from the AI and create a button for it
+            labels.forEach(label => {
+                const button = document.createElement('button');
+                button.textContent = label.description;
+                button.classList.add('w-full', 'bg-green-500', 'hover:bg-green-700', 'text-white', 'font-bold', 'py-2', 'px-4', 'rounded');
+                
+                // When a result button is clicked...
+                button.onclick = () => {
+                    pickList.push(label.description); // Add the item to our list
+                    console.log('Current Pick List:', pickList);
+                    alert(`Added "${label.description}" to your list!`);
+                    
+                    // Visually disable the button so you can't add it twice
+                    button.disabled = true;
+                    button.classList.remove('bg-green-500', 'hover:bg-green-700');
+                    button.classList.add('bg-gray-400', 'cursor-not-allowed');
+                };
+                resultsButtons.appendChild(button);
+            });
+            
+            // Hide the camera view and show the results view
+            cameraView.classList.add('hidden');
+            resultsView.classList.remove('hidden');
+        }
+
+        // When the "Scan Again" button is clicked, switch back to the camera view
+        scanAgainButton.addEventListener('click', () => {
+            resultsView.classList.add('hidden');
+            cameraView.classList.remove('hidden');
+        });
+        
+        // --- UPDATED EVENT LISTENER FOR THE MAIN BUTTON ---
+        identifyButton.addEventListener('click', async () => {
+            if (!videoElement) {
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            identifyButton.textContent = 'Identifying...';
+            identifyButton.disabled = true;
+
+            try {
+                const response

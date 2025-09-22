@@ -85,7 +85,7 @@
                     button.classList.add('bg-gray-400', 'cursor-not-allowed');
                 };
                 resultsButtons.appendChild(button);
-            });
+});
             
             cameraView.classList.add('hidden');
             resultsView.classList.remove('hidden');
@@ -124,7 +124,7 @@
 
                 const results = await response.json();
                 
-                if (results.labels && results.labels.length > <strong>0</strong>) {
+                if (results.labels && results.labels.length > 0) {
                     showResults(results.labels);
                 } else {
                     alert('Nothing was detected.');
